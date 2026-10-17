@@ -1,9 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -53,6 +54,11 @@ const defaultContacts: Contact[] = [
 export default function Index() {
   const [contacts, setContacts] = useState<Contact[]>(defaultContacts);
 
+  // search  = isi yang sedang diketik pengguna
+  // keyword = hasil "tunda 300ms" dari search, dipakai untuk memfilter
+  const [search, setSearch] = useState("");
+  const [keyword, setKeyword] = useState("");
+
   const loadContacts = async (): Promise<void> => {
     try {
       const savedContacts = await AsyncStorage.getItem("contacts");
@@ -72,11 +78,34 @@ export default function Index() {
     }
   };
 
+  // Dijalankan setiap halaman ini kembali menjadi layar aktif
   useFocusEffect(
     useCallback(() => {
       loadContacts();
     }, [])
   );
+
+  // useEffect: setiap state `search` berubah, tunggu 300ms lalu update `keyword`.
+  // Fungsi cleanup membatalkan timer lama jika pengguna masih mengetik.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setKeyword(search.trim().toLowerCase());
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // useMemo: hasil filter hanya dihitung ulang jika contacts atau keyword berubah
+  const filteredContacts = useMemo(() => {
+    if (!keyword) return contacts;
+
+    return contacts.filter(
+      (contact) =>
+        contact.name.toLowerCase().includes(keyword) ||
+        contact.phone.includes(keyword) ||
+        contact.address.toLowerCase().includes(keyword)
+    );
+  }, [contacts, keyword]);
 
   const renderContact = ({ item }: { item: Contact }) => {
     return (
@@ -148,12 +177,32 @@ export default function Index() {
         </Text>
       </TouchableOpacity>
 
+      <TextInput
+        style={styles.input}
+        placeholder="Cari nama, nomor, atau alamat"
+        value={search}
+        onChangeText={setSearch}
+        autoCapitalize="none"
+        clearButtonMode="while-editing"
+      />
+
       <FlatList
-        data={contacts}
+        data={filteredContacts}
         keyExtractor={(item) => item.id}
         renderItem={renderContact}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <Text
+            style={{
+              textAlign: "center",
+              color: "#888",
+              marginTop: 30,
+            }}
+          >
+            Kontak tidak ditemukan.
+          </Text>
+        }
       />
     </View>
   );
