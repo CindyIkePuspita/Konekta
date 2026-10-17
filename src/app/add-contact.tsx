@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -48,8 +48,17 @@ export default function AddContact() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
 
+  // useRef: menyimpan referensi ke TextInput agar bisa dipindah fokusnya
+  // tanpa memicu re-render
+  const phoneRef = useRef<TextInput>(null);
+  const addressRef = useRef<TextInput>(null);
+
   const handleSave = async () => {
-    if (!name || !phone || !address) {
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+    const cleanAddress = address.trim();
+
+    if (!cleanName || !cleanPhone || !cleanAddress) {
       Alert.alert(
         "Data belum lengkap",
         "Silakan isi semua data kontak."
@@ -66,9 +75,9 @@ export default function AddContact() {
 
       const newContact = {
         id: Date.now().toString(),
-        name: name,
-        phone: phone,
-        address: address,
+        name: cleanName,
+        phone: cleanPhone,
+        address: cleanAddress,
       };
 
       contacts = [...contacts, newContact];
@@ -84,7 +93,7 @@ export default function AddContact() {
         [
           {
             text: "OK",
-            onPress: () => router.replace("/"),
+            onPress: () => router.back(),
           },
         ]
       );
@@ -100,8 +109,6 @@ export default function AddContact() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tambah Kontak</Text>
-
       <Text style={styles.subtitle}>
         Tambahkan kontak baru ke Konekta
       </Text>
@@ -112,19 +119,24 @@ export default function AddContact() {
         placeholder="Masukkan nama"
         value={name}
         onChangeText={setName}
+        returnKeyType="next"
+        onSubmitEditing={() => phoneRef.current?.focus()}
       />
 
       <Text style={styles.label}>Nomor Telepon</Text>
       <TextInput
+        ref={phoneRef}
         style={styles.input}
         placeholder="Masukkan nomor telepon"
         keyboardType="phone-pad"
         value={phone}
         onChangeText={setPhone}
+        onSubmitEditing={() => addressRef.current?.focus()}
       />
 
       <Text style={styles.label}>Alamat</Text>
       <TextInput
+        ref={addressRef}
         style={[styles.input, styles.addressInput]}
         placeholder="Masukkan alamat"
         multiline
@@ -140,6 +152,13 @@ export default function AddContact() {
           Simpan Kontak
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={() => router.back()}
+      >
+        <Text style={styles.cancelText}>Batal</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -148,20 +167,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F7FC",
-    paddingTop: 55,
+    paddingTop: 20,
     paddingHorizontal: 20,
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333333",
   },
 
   subtitle: {
     fontSize: 14,
     color: "#777777",
-    marginTop: 5,
     marginBottom: 30,
   },
 
@@ -200,5 +212,16 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+
+  cancelButton: {
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 5,
+  },
+
+  cancelText: {
+    color: "#555555",
+    fontSize: 16,
   },
 });
